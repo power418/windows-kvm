@@ -28,7 +28,7 @@ else
 fi
 
 : "${VM_DIR:=$SCRIPT_DIR}"
-: "${VM_NAME:=Windows-AutoCAD-VM}"
+: "${VM_NAME:=windows-vm}"
 : "${VM_DISK_NAME:=windows10.qcow2}"
 : "${VIRTIO_ISO_NAME:=virtio-win.iso}"
 : "${WIN_ISO_NAME:=windows.iso}"

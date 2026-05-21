@@ -20,7 +20,7 @@ if [ -f "$VM_CONFIG_FILE" ]; then
 fi
 
 : "${VM_DIR:=$SCRIPT_DIR}"
-: "${VM_NAME:=Windows-AutoCAD-VM}"
+: "${VM_NAME:=windows-vm}"
 : "${VM_DISK_NAME:=windows10.qcow2}"
 : "${VIRTIO_ISO_NAME:=virtio-win.iso}"
 : "${WIN_ISO_NAME:=windows.iso}"
@@ -45,8 +45,8 @@ require_command awk
 require_command sed
 require_command mktemp
 
-GPU_LINE="$(lspci -nn | awk '/NVIDIA.*(VGA|3D)/ {print; exit}')"
-GPU_AUDIO_LINE="$(lspci -nn | awk '/NVIDIA.*Audio/ {print; exit}')"
+GPU_LINE="$(lspci -Dnn | awk 'tolower($0) ~ /nvidia/ && /(VGA compatible controller|3D controller)/ {print; exit}')"
+GPU_AUDIO_LINE="$(lspci -Dnn | awk 'tolower($0) ~ /nvidia/ && /(Audio device|Audio controller)/ {print; exit}')"
 
 if [ -z "$GPU_LINE" ] || [ -z "$GPU_AUDIO_LINE" ]; then
   echo "GPU NVIDIA atau fungsi audio NVIDIA tidak terdeteksi."
@@ -56,8 +56,16 @@ fi
 
 GPU_BDF="$(printf '%s\n' "$GPU_LINE" | awk '{print $1}')"
 GPU_AUDIO_BDF="$(printf '%s\n' "$GPU_AUDIO_LINE" | awk '{print $1}')"
-GPU_BDF_SYS="0000:${GPU_BDF}"
-GPU_AUDIO_BDF_SYS="0000:${GPU_AUDIO_BDF}"
+if [[ "$GPU_BDF" == *:*:* ]]; then
+  GPU_BDF_SYS="$GPU_BDF"
+else
+  GPU_BDF_SYS="0000:${GPU_BDF}"
+fi
+if [[ "$GPU_AUDIO_BDF" == *:*:* ]]; then
+  GPU_AUDIO_BDF_SYS="$GPU_AUDIO_BDF"
+else
+  GPU_AUDIO_BDF_SYS="0000:${GPU_AUDIO_BDF}"
+fi
 GPU_IDS="$(lspci -nn -s "$GPU_BDF" | awk -F'[][]' '{print $(NF-1)}')"
 GPU_AUDIO_IDS="$(lspci -nn -s "$GPU_AUDIO_BDF" | awk -F'[][]' '{print $(NF-1)}')"
 
@@ -112,7 +120,7 @@ else
 fi
 
 : "${VM_DIR:=$SCRIPT_DIR}"
-: "${VM_NAME:=Windows-AutoCAD-VM}"
+: "${VM_NAME:=windows-vm}"
 : "${VM_DISK_NAME:=windows10.qcow2}"
 : "${VIRTIO_ISO_NAME:=virtio-win.iso}"
 : "${WIN_ISO_NAME:=windows.iso}"

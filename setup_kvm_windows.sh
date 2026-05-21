@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ==============================================================================
-# Setup KVM & QEMU Windows VM untuk AutoCAD di CachyOS (Arch-based)
+# Setup KVM & QEMU Windows VM di CachyOS (Arch-based)
 # ==============================================================================
 # Script ini akan mengotomatisasi instalasi QEMU/KVM, mendeteksi GPU Anda,
 # mengunduh driver VirtIO Windows, dan membuat script booting VM yang super optimal.
@@ -135,7 +135,7 @@ cat <<EOF > "$VM_CONFIG"
 # Edit this file if you want both scripts to stay in sync.
 
 VM_DIR="$VM_DIR"
-VM_NAME="Windows-AutoCAD-VM"
+VM_NAME="windows-vm"
 VM_DISK_NAME="windows10.qcow2"
 VIRTIO_ISO_NAME="virtio-win.iso"
 WIN_ISO_NAME="windows.iso"

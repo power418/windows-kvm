@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # ==============================================================================
-# SCRIPT PELUNCUR WINDOWS VM OPTIMAL UNTUK AUTOCAD (QEMU/KVM)
+# SCRIPT PELUNCUR WINDOWS VM (QEMU/KVM)
 # ==============================================================================
 # Script ini membaca config bersama dari vm_config.sh supaya setup dan boot
 # tetap saling terhubung.
@@ -16,7 +16,7 @@ if [ -f "$CONFIG_FILE" ]; then
 fi
 
 : "${VM_DIR:=$SCRIPT_DIR}"
-: "${VM_NAME:=Windows-AutoCAD-VM}"
+: "${VM_NAME:=windows-vm}"
 : "${VM_DISK_NAME:=windows10.qcow2}"
 : "${VIRTIO_ISO_NAME:=virtio-win.iso}"
 : "${WIN_ISO_NAME:=windows.iso}"
