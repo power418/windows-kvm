@@ -1,9 +1,9 @@
-# Windows 10 VM QEMU/KVM + GPU Passthrough
+# Windows VM QEMU/KVM + GPU Passthrough
 
 Repo ini menyiapkan Windows 10 VM di Linux host pakai QEMU/KVM. Ada dua mode yang perlu dibedakan:
 
 - Mode normal: VM jalan pakai display virtio, cocok untuk install dan test awal.
-- Mode GPU passthrough: GPU fisik NVIDIA RTX 3050 dipindahkan ke Windows guest supaya Windows bisa install driver NVIDIA asli.
+- Mode GPU passthrough: GPU fisik dipindahkan ke Windows guest supaya Windows bisa install driver asli.
 
 ## File Penting
 
@@ -106,7 +106,7 @@ Urutan umumnya:
 
 1. Aktifkan `intel_iommu=on iommu=pt` di kernel command line.
 2. Reboot host.
-3. Pastikan GPU NVIDIA dan audio function-nya terdeteksi.
+3. Pastikan GPU dan audio function-nya terdeteksi.
 4. Bind `01:00.0` dan `01:00.1` ke VFIO atau tambahkan sebagai `PCI Host Device` di Virt-Manager.
 5. Boot VM.
 6. Install driver NVIDIA di dalam Windows guest.
@@ -129,7 +129,7 @@ Artinya:
 - Windows guest belum otomatis memakai RTX 3050 fisik sampai kamu aktifkan passthrough VFIO.
 - Setelah Windows selesai terpasang dan driver VirtIO network sudah ada, kamu bisa ubah `VM_NET_DEVICE` kembali ke `virtio-net-pci`.
 
-Kalau kamu menjalankan `start_win_vm_gpu.sh`, guest akan tetap punya display virtio sebagai fallback, tapi RTX 3050 ikut di-attach lewat VFIO.
+Kalau kamu menjalankan `start_win_vm_gpu.sh`, guest akan tetap punya display virtio sebagai fallback, tapi GPU ikut di-attach lewat VFIO.
 
 ## Ubah Config
 
