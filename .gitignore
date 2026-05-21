@@ -1,0 +1,27 @@
+# VM disk images and installer media
+*.qcow2
+*.qcow2.*
+*.iso
+*.img
+*.raw
+*.vdi
+*.vmdk
+
+# Local generated configs
+# vm_config.sh
+# gpu_config.sh
+
+# Runtime, backup, and editor swap files
+*.log
+*.tmp
+*.swp
+*.swo
+*.bak
+*.bak.*
+*.orig
+*.rej
+*~
+
+# OS clutter
+.DS_Store
+Thumbs.db
