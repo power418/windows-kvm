@@ -32,28 +32,43 @@ VM_DISK="$VM_DIR/$VM_DISK_NAME"
 VIRTIO_ISO="$VM_DIR/$VIRTIO_ISO_NAME"
 WIN_ISO="$VM_DIR/$WIN_ISO_NAME"
 
+log() {
+  printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"
+}
+
 mkdir -p "$VM_DIR"
+
+log "Memulai Windows VM"
+log "  - VM name: $VM_NAME"
+log "  - CPU: $((VM_SMP_CORES * VM_SMP_THREADS)) vCPUs"
+log "  - RAM: ${VM_RAM_MB} MB"
 
 # Pastikan disk ada
 if [ ! -f "$VM_DISK" ]; then
-  echo "Virtual disk tidak ditemukan! Membuat baru..."
+  log "MISS virtual disk: $VM_DISK"
+  log "Membuat virtual disk baru..."
   qemu-img create -f qcow2 "$VM_DISK" "$VM_DISK_SIZE"
+  log "OK   virtual disk dibuat"
+else
+  log "OK   virtual disk ditemukan: $VM_DISK"
 fi
 
 if [ ! -f "$WIN_ISO" ]; then
-  echo "ISO Windows tidak ditemukan: $WIN_ISO"
-  echo "Letakkan installer Windows sebagai $VM_DIR/windows.iso"
+  log "MISS ISO Windows: $WIN_ISO"
+  log "Letakkan installer Windows sebagai $VM_DIR/windows.iso"
   exit 1
+else
+  log "OK   ISO Windows ditemukan: $WIN_ISO"
 fi
 
 if [ ! -f "$VIRTIO_ISO" ]; then
-  echo "VirtIO ISO tidak ditemukan: $VIRTIO_ISO"
+  log "MISS VirtIO ISO: $VIRTIO_ISO"
   exit 1
+else
+  log "OK   VirtIO ISO ditemukan: $VIRTIO_ISO"
 fi
 
-echo "Memulai Windows VM dengan optimasi tinggi..."
-echo "  - CPU: $((VM_SMP_CORES * VM_SMP_THREADS)) vCPUs (Host Passthrough)"
-echo "  - RAM: ${VM_RAM_MB} MB (Akselerasi KVM)"
+log "Semua prasyarat utama terdeteksi, menyiapkan QEMU..."
 
 # Parameter QEMU Berkinerja Tinggi
 # Disk pakai SATA/AHCI dulu supaya installer Windows langsung melihat storage.

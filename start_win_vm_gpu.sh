@@ -47,29 +47,72 @@ VM_DISK="$VM_DIR/$VM_DISK_NAME"
 VIRTIO_ISO="$VM_DIR/$VIRTIO_ISO_NAME"
 WIN_ISO="$VM_DIR/$WIN_ISO_NAME"
 
+log() {
+  printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"
+}
+
+ok() {
+  log "OK   $*"
+}
+
+warn() {
+  log "WARN $*"
+}
+
+fail() {
+  log "FAIL $*"
+}
+
 mkdir -p "$VM_DIR"
 
+log "Memulai Windows VM dengan NVIDIA passthrough"
+log "  - VM name: $VM_NAME"
+log "  - GPU: ${GPU_NAME:-NVIDIA RTX 3050 Mobile} (${GPU_HOST_PCI})"
+log "  - Audio GPU: ${GPU_AUDIO_PCI}"
+log "  - CPU: $((VM_SMP_CORES * VM_SMP_THREADS)) vCPUs"
+log "  - RAM: ${VM_RAM_MB} MB"
+
 if [ ! -f "$VM_DISK" ]; then
-  echo "Virtual disk tidak ditemukan! Membuat baru..."
+  fail "Virtual disk tidak ditemukan: $VM_DISK"
+  log "Membuat virtual disk baru..."
   qemu-img create -f qcow2 "$VM_DISK" "$VM_DISK_SIZE"
+  ok "Virtual disk dibuat"
+else
+  ok "Virtual disk ditemukan: $VM_DISK"
 fi
 
 if [ ! -f "$WIN_ISO" ]; then
-  echo "ISO Windows tidak ditemukan: $WIN_ISO"
-  echo "Letakkan installer Windows sebagai $VM_DIR/windows.iso"
+  fail "ISO Windows tidak ditemukan: $WIN_ISO"
+  log "Letakkan installer Windows sebagai $VM_DIR/windows.iso"
   exit 1
+else
+  ok "ISO Windows ditemukan: $WIN_ISO"
 fi
 
 if [ ! -f "$VIRTIO_ISO" ]; then
-  echo "VirtIO ISO tidak ditemukan: $VIRTIO_ISO"
+  fail "VirtIO ISO tidak ditemukan: $VIRTIO_ISO"
   exit 1
+else
+  ok "VirtIO ISO ditemukan: $VIRTIO_ISO"
 fi
 
 HOST_GPU_SYSFS="/sys/bus/pci/devices/$GPU_HOST_PCI"
+HOST_AUDIO_SYSFS="/sys/bus/pci/devices/$GPU_AUDIO_PCI"
+
 if [ ! -e "$HOST_GPU_SYSFS" ]; then
-  echo "Host GPU device tidak ditemukan di $HOST_GPU_SYSFS"
-  echo "Cek kembali GPU_HOST_PCI di gpu_config.sh"
+  fail "Host GPU device tidak ditemukan di $HOST_GPU_SYSFS"
+  log "Cek kembali GPU_HOST_PCI di gpu_config.sh"
   exit 1
+else
+  ok "Host GPU device ditemukan: $GPU_HOST_PCI"
+fi
+
+if [ ! -e "$HOST_AUDIO_SYSFS" ]; then
+  fail "Host audio device tidak ditemukan di $HOST_AUDIO_SYSFS"
+  log "Cek kembali GPU_AUDIO_PCI di gpu_config.sh"
+  exit 1
+else
+  ok "Host audio device ditemukan: $GPU_AUDIO_PCI"
 fi
 
 HOST_GPU_DRIVER=""
@@ -77,16 +120,70 @@ if [ -L "$HOST_GPU_SYSFS/driver" ]; then
   HOST_GPU_DRIVER="$(basename "$(readlink -f "$HOST_GPU_SYSFS/driver")")"
 fi
 
-if [ "$HOST_GPU_DRIVER" != "vfio-pci" ]; then
-  echo "Peringatan: $GPU_HOST_PCI masih terikat ke driver '$HOST_GPU_DRIVER'."
-  echo "Passthrough akan gagal sampai GPU dibind ke vfio-pci dan host di-reboot."
+HOST_AUDIO_DRIVER=""
+if [ -L "$HOST_AUDIO_SYSFS/driver" ]; then
+  HOST_AUDIO_DRIVER="$(basename "$(readlink -f "$HOST_AUDIO_SYSFS/driver")")"
 fi
 
-echo "Memulai Windows VM dengan NVIDIA passthrough..."
-echo "  - GPU: ${GPU_NAME:-NVIDIA RTX 3050 Mobile} (${GPU_HOST_PCI})"
-echo "  - Audio GPU: ${GPU_AUDIO_PCI}"
-echo "  - CPU: $((VM_SMP_CORES * VM_SMP_THREADS)) vCPUs"
-echo "  - RAM: ${VM_RAM_MB} MB"
+READY=1
+BOOT_CMDLINE="$(cat /proc/cmdline 2>/dev/null || true)"
+
+if [ "$HOST_GPU_DRIVER" != "vfio-pci" ]; then
+  warn "GPU driver aktif: ${HOST_GPU_DRIVER:-none}"
+  fail "GPU masih terikat ke driver '${HOST_GPU_DRIVER:-none}'."
+  READY=0
+else
+  ok "GPU driver aktif: vfio-pci"
+fi
+
+if [ "$HOST_AUDIO_DRIVER" != "vfio-pci" ]; then
+  warn "Audio driver aktif: ${HOST_AUDIO_DRIVER:-none}"
+  fail "Audio function belum bind ke vfio-pci."
+  READY=0
+else
+  ok "Audio driver aktif: vfio-pci"
+fi
+
+if [[ "$BOOT_CMDLINE" == *"intel_iommu=on"* || "$BOOT_CMDLINE" == *"amd_iommu=on"* ]]; then
+  ok "Kernel IOMMU param aktif"
+else
+  fail "Kernel cmdline belum memuat intel_iommu=on atau amd_iommu=on."
+  READY=0
+fi
+
+if [[ "$BOOT_CMDLINE" == *"iommu=pt"* ]]; then
+  ok "Kernel passthrough param aktif: iommu=pt"
+else
+  warn "Kernel cmdline belum memuat iommu=pt."
+fi
+
+GPU_IOMMU_GROUP=""
+if [ -L "$HOST_GPU_SYSFS/iommu_group" ]; then
+  GPU_IOMMU_GROUP="$(basename "$(readlink -f "$HOST_GPU_SYSFS/iommu_group")")"
+  ok "GPU IOMMU group: $GPU_IOMMU_GROUP"
+else
+  fail "GPU tidak punya iommu_group."
+  READY=0
+fi
+
+GPU_AUDIO_IOMMU_GROUP=""
+if [ -L "$HOST_AUDIO_SYSFS/iommu_group" ]; then
+  GPU_AUDIO_IOMMU_GROUP="$(basename "$(readlink -f "$HOST_AUDIO_SYSFS/iommu_group")")"
+  ok "Audio IOMMU group: $GPU_AUDIO_IOMMU_GROUP"
+else
+  fail "Audio device tidak punya iommu_group."
+  READY=0
+fi
+
+if [ "$READY" -ne 1 ]; then
+  log "Passthrough belum siap."
+  log "Pastikan IOMMU aktif di BIOS/UEFI dan host sudah dibind ke vfio-pci."
+  log "Kalau baru ubah setup, jalankan gpu_passthrough_setup.sh lalu reboot host."
+  exit 1
+fi
+
+log "Semua prasyarat passthrough terdeteksi, menyiapkan QEMU..."
+log "  - VirtIO display fallback: ${GPU_USE_VIRTIO_DISPLAY}"
 
 QEMU_CMD=(
   qemu-system-x86_64
